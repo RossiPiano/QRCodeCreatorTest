@@ -1,0 +1,357 @@
+<!doctype html>
+
+<!--
+Third-party QR generator:
+Copyright (c) 2009 Kazuhiko Arase
+Licensed under the MIT License.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+-->
+
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QR Code Creator — Version 1</title>
+<style>
+:root{color-scheme:light;--ink:#18212f;--muted:#64748b;--line:#dce3ec;--paper:#f5f7fa;--blue:#2457c5;--blue2:#eaf0ff;--red:#a42d35;--green:#176b45}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
+header{background:#17243a;color:white;padding:22px max(20px,calc((100% - 1080px)/2))}
+header h1{margin:0;font-size:1.45rem}header p{margin:4px 0 0;color:#cbd5e1}
+main{max-width:1080px;margin:24px auto;padding:0 16px 48px}
+.notice{padding:12px 14px;border:1px solid #cbd8ef;background:#eef4ff;border-radius:10px;margin-bottom:18px}
+.grid{display:grid;grid-template-columns:minmax(280px, .9fr) minmax(360px,1.4fr);gap:18px;align-items:start}
+.panel{background:white;border:1px solid var(--line);border-radius:13px;padding:18px;box-shadow:0 2px 8px #17243a08}
+h2{font-size:1.08rem;margin:0 0 14px}
+label{display:block;font-weight:650;margin:12px 0 5px}
+input{width:100%;padding:10px 11px;border:1px solid #bdc8d8;border-radius:8px;font:inherit;color:inherit}
+input:focus{outline:2px solid #9ab5f7;border-color:var(--blue)}
+small,.muted{color:var(--muted)}
+button{border:0;border-radius:8px;padding:9px 13px;font:600 14px system-ui;cursor:pointer;background:var(--blue);color:white}
+button.secondary{background:#e9edf3;color:#263449}
+button.danger{background:#fbeaec;color:var(--red)}
+button:disabled{opacity:.45;cursor:not-allowed}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+#message{margin-top:12px;min-height:22px;color:var(--green);font-size:.92rem}
+#message.error{color:var(--red)}
+#qrPreview{display:flex;justify-content:center;align-items:center;min-height:210px;background:#fafbfd;border:1px dashed var(--line);border-radius:10px;margin-top:14px;padding:12px}
+#qrPreview img{width:190px;height:190px;image-rendering:pixelated}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.toolbar input{flex:1;min-width:160px}
+.entry{display:grid;grid-template-columns:1fr auto;gap:10px;padding:13px 0;border-top:1px solid var(--line)}
+.entry:first-child{border-top:0}
+.entry strong{display:block;overflow-wrap:anywhere}
+.entry .url{font-size:.85rem;color:var(--muted);overflow-wrap:anywhere}
+.entry .meta{font-size:.78rem;color:var(--muted);margin-top:3px}
+.entry-buttons{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.entry-buttons button{padding:7px 9px;font-size:12px}
+.inactive{opacity:.58}
+.status{font-size:.75rem;font-weight:700;border-radius:99px;padding:2px 8px;background:#e5f5ec;color:var(--green)}
+.status.off{background:#f1e9e9;color:#8b353b}
+hr{border:0;border-top:1px solid var(--line);margin:18px 0}
+.hidden{display:none!important}
+#redirectMessage{max-width:650px;margin:10vh auto;background:white;border:1px solid var(--line);border-radius:14px;padding:28px}
+footer{max-width:1080px;margin:0 auto;padding:0 16px 28px;color:var(--muted);font-size:.82rem}
+@media(max-width:760px){.grid{grid-template-columns:1fr}header{padding:18px 16px}.entry{grid-template-columns:1fr}.entry-buttons{justify-content:flex-start}}
+</style>
+</head>
+<body>
+<header>
+  <h1>QR Code Creator</h1>
+  <p>Dynamic QR codes · Version 1</p>
+</header>
+
+<div id="redirectMessage" class="hidden">
+  <h2 id="redirectTitle">Opening link…</h2>
+  <p id="redirectText">Please wait.</p>
+</div>
+
+<main id="app">
+  <div class="notice">
+    <strong>How this works:</strong> Each QR code contains a link to this GitHub Pages site and a permanent ID.
+    The destination is looked up in <code>database/qr_codes.json</code>, so you can change the destination later without reprinting the QR code.
+  </div>
+
+  <div class="grid">
+    <section class="panel">
+      <h2 id="formHeading">Create a QR code</h2>
+      <form id="codeForm">
+        <label for="name">Name / label</label>
+        <input id="name" maxlength="100" placeholder="e.g. Piano lesson feedback form" required>
+        <label for="destination">Destination URL</label>
+        <input id="destination" type="url" placeholder="https://forms.gle/…" required>
+        <small>Use the complete shareable URL. Only http:// and https:// links are accepted.</small>
+        <label for="baseUrl">QR link base address</label>
+        <input id="baseUrl" type="url" required>
+        <small>This should be the address of your published GitHub Pages app, ending with a slash. Check it before creating real QR codes.</small>
+        <div class="actions">
+          <button type="submit" id="saveButton">Create QR code</button>
+          <button type="button" class="secondary" id="cancelEdit" hidden>Cancel edit</button>
+        </div>
+      </form>
+      <div id="message" role="status"></div>
+      <div id="qrPreview"><span class="muted">Your QR code preview will appear here.</span></div>
+      <div class="actions">
+        <button type="button" class="secondary" id="downloadPng" disabled>Download PNG</button>
+        <button type="button" class="secondary" id="downloadSvg" disabled>Download SVG</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Your QR codes</h2>
+      <div class="toolbar">
+        <input id="search" placeholder="Search names or URLs…" aria-label="Search QR codes">
+        <button type="button" class="secondary" id="showAll">Show all</button>
+      </div>
+      <div id="entries"><p class="muted">No QR codes yet. Create one using the form.</p></div>
+      <hr>
+      <h2>Database publishing</h2>
+      <p class="muted">Your changes are kept as a draft in this browser. To publish them, download the JSON file and upload it to your GitHub repository, replacing the existing file at <code>database/qr_codes.json</code>.</p>
+      <div class="actions">
+        <button type="button" id="exportJson">Download database JSON</button>
+        <button type="button" class="secondary" id="importJson">Import database JSON</button>
+        <input type="file" id="jsonFile" accept=".json,application/json" class="hidden">
+      </div>
+      <p class="muted" id="draftInfo">Draft is stored in this browser only. It is not published until you upload the JSON file to GitHub.</p>
+      <div class="actions">
+        <button type="button" class="secondary" id="loadPublished">Load published database</button>
+      </div>
+      <small>Loading the published database replaces the current browser draft. Export your draft first if you need to keep it.</small>
+    </section>
+  </div>
+</main>
+<footer>
+  QR images are generated in your browser. The database contains QR names, IDs and destination URLs; it is public when published.
+  Do not store private or confidential links here.
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@2.0.4/dist/qrcode.js"></script>
+<script>
+(() => {
+  "use strict";
+  const DB_PATH = "database/qr_codes.json";
+  const STORAGE_KEY = "qrCodeCreatorV1Draft";
+  const $ = id => document.getElementById(id);
+  let records = [];
+  let editingId = null;
+  let currentQr = null;
+  let currentQrId = null;
+
+  function cleanBase(value) {
+    return value.trim().replace(/index\.html?$/i, "").replace(/\/?$/, "/");
+  }
+  function defaultBase() {
+    let path = location.pathname;
+    if (!path.endsWith("/")) path = path.slice(0, path.lastIndexOf("/") + 1);
+    return location.origin + path;
+  }
+  function validWebUrl(value) {
+    try { const u = new URL(value); return u.protocol === "https:" || u.protocol === "http:"; }
+    catch { return false; }
+  }
+  function makeId() {
+    const bytes = new Uint8Array(8);
+    crypto.getRandomValues(bytes);
+    return "q-" + Array.from(bytes, b => b.toString(16).padStart(2,"0")).join("");
+  }
+  function timestamp() { return new Date().toISOString(); }
+  function saveDraft() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({version:1, updatedAt:timestamp(), codes:records}));
+    $("draftInfo").textContent = "Browser draft saved: " + records.length + " record(s). Not published yet.";
+  }
+  function safeText(value) { return String(value ?? ""); }
+  function renderList() {
+    const query = $("search").value.trim().toLowerCase();
+    const shown = records.filter(r => (r.name + " " + r.url + " " + r.id).toLowerCase().includes(query));
+    const host = $("entries");
+    host.replaceChildren();
+    if (!shown.length) {
+      const p = document.createElement("p"); p.className="muted";
+      p.textContent = records.length ? "No matching QR codes." : "No QR codes yet. Create one using the form.";
+      host.append(p); return;
+    }
+    shown.forEach(record => {
+      const item = document.createElement("div");
+      item.className = "entry" + (record.active ? "" : " inactive");
+      const info = document.createElement("div");
+      const title = document.createElement("strong"); title.textContent = record.name || "(Unnamed QR code)";
+      const status = document.createElement("span"); status.className = "status" + (record.active ? "" : " off");
+      status.textContent = record.active ? "ACTIVE" : "INACTIVE";
+      title.append(" ", status);
+      const url = document.createElement("div"); url.className="url"; url.textContent=record.url;
+      const meta = document.createElement("div"); meta.className="meta"; meta.textContent="ID: " + record.id;
+      info.append(title,url,meta);
+      const buttons = document.createElement("div"); buttons.className="entry-buttons";
+      const preview = document.createElement("button"); preview.className="secondary"; preview.textContent="Show QR"; preview.onclick=()=>showQr(record.id);
+      const edit = document.createElement("button"); edit.className="secondary"; edit.textContent="Edit"; edit.disabled=!record.active; edit.onclick=()=>startEdit(record.id);
+      const toggle = document.createElement("button"); toggle.className=record.active?"danger":"secondary"; toggle.textContent=record.active?"Deactivate":"Reactivate"; toggle.onclick=()=>toggleActive(record.id);
+      buttons.append(preview,edit,toggle);
+      item.append(info,buttons); host.append(item);
+    });
+  }
+  function showQr(id) {
+    const record = records.find(r=>r.id===id);
+    if (!record) return;
+    const base = cleanBase($("baseUrl").value || defaultBase());
+    const qrUrl = base + "?id=" + encodeURIComponent(record.id);
+    try {
+      const qr = qrcode(0,"M"); qr.addData(qrUrl); qr.make();
+      currentQr = qr; currentQrId = id;
+      const img = document.createElement("img");
+      img.alt = "QR code for " + record.name;
+      img.src = qr.createDataURL(8,32);
+      $("qrPreview").replaceChildren(img);
+      $("downloadPng").disabled = false; $("downloadSvg").disabled = false;
+      setMessage("QR code ready for “" + record.name + "”. Scan-test it before printing.");
+    } catch (error) {
+      setMessage("Could not generate this QR code. Check the URL length and try again.", true);
+    }
+  }
+  function setMessage(text, error=false) {
+    $("message").textContent=text; $("message").classList.toggle("error",error);
+  }
+  function resetForm() {
+    editingId=null; $("codeForm").reset(); $("baseUrl").value=defaultBase();
+    $("formHeading").textContent="Create a QR code"; $("saveButton").textContent="Create QR code";
+    $("cancelEdit").hidden=true;
+  }
+  function startEdit(id) {
+    const r=records.find(x=>x.id===id); if(!r || !r.active) return;
+    editingId=id; $("name").value=r.name; $("destination").value=r.url;
+    $("formHeading").textContent="Edit QR code"; $("saveButton").textContent="Save changes";
+    $("cancelEdit").hidden=false; setMessage("Editing this record will keep its QR ID unchanged.");
+    window.scrollTo({top:0,behavior:"smooth"});
+  }
+  function toggleActive(id) {
+    const r=records.find(x=>x.id===id); if(!r) return;
+    r.active=!r.active; r.updatedAt=timestamp(); saveDraft(); renderList();
+    if(currentQrId===id && !r.active) {
+      $("qrPreview").innerHTML='<span class="muted">This QR code is inactive.</span>';
+      $("downloadPng").disabled=true; $("downloadSvg").disabled=true;
+    }
+    setMessage(r.active ? "QR code reactivated in the local draft." : "QR code deactivated in the local draft. Publish the JSON change to make it inactive for scanners.");
+  }
+  $("codeForm").addEventListener("submit", event=>{
+    event.preventDefault();
+    const name=$("name").value.trim(), url=$("destination").value.trim();
+    const base=cleanBase($("baseUrl").value);
+    if(!name){setMessage("Enter a name for this QR code.",true);return;}
+    if(!validWebUrl(url)){setMessage("Enter a valid http:// or https:// destination URL.",true);return;}
+    if(!validWebUrl(base)){setMessage("Enter a valid GitHub Pages base address.",true);return;}
+    $("baseUrl").value=base;
+    if(editingId){
+      const r=records.find(x=>x.id===editingId); if(!r)return;
+      r.name=name;r.url=url;r.updatedAt=timestamp();
+      const id=editingId; resetForm(); saveDraft(); renderList(); showQr(id);
+      setMessage("Changes saved to the browser draft. Download and publish the JSON to make them live.");
+    } else {
+      let id; do{id=makeId();}while(records.some(r=>r.id===id));
+      const r={id,name,url,active:true,createdAt:timestamp(),updatedAt:timestamp()};
+      records.unshift(r); saveDraft(); renderList(); showQr(id); resetForm();
+      setMessage("QR code created. Its random ID will stay the same when you edit the destination.");
+    }
+  });
+  $("cancelEdit").onclick=()=>{resetForm();setMessage("Edit cancelled.");};
+  $("search").addEventListener("input",renderList);
+  $("showAll").onclick=()=>{$("search").value="";renderList();};
+  $("downloadPng").onclick=()=>{
+    if(!currentQr)return;
+    const scale=12, margin=48, count=currentQr.getModuleCount();
+    const canvas=document.createElement("canvas");
+    canvas.width=canvas.height=count*scale+margin*2;
+    const ctx=canvas.getContext("2d");
+    ctx.fillStyle="#fff";ctx.fillRect(0,0,canvas.width,canvas.height);
+    currentQr.renderTo2dContext({
+      fillStyle:"#000",
+      fillRect:(x,y,w,h)=>{ctx.fillStyle="#000";ctx.fillRect(x*scale+margin,y*scale+margin,w*scale,h*scale);}
+    },scale);
+    const a=document.createElement("a");a.href=canvas.toDataURL("image/png");a.download="qr-"+currentQrId+".png";a.click();
+  };
+  $("downloadSvg").onclick=()=>{
+    if(!currentQr)return;
+    const svg=currentQr.createSvgTag({cellSize:12,margin:48,scalable:true});
+    const blob=new Blob([svg],{type:"image/svg+xml;charset=utf-8"});
+    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="qr-"+currentQrId+".svg";a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  };
+  function databaseObject(){return {version:1,updatedAt:timestamp(),codes:records};}
+  $("exportJson").onclick=()=>{
+    const blob=new Blob([JSON.stringify(databaseObject(),null,2)],{type:"application/json"});
+    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="qr_codes.json";a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+    setMessage("Database JSON downloaded. Upload it to the repository's database/ folder to publish.");
+  };
+  $("importJson").onclick=()=>$("jsonFile").click();
+  $("jsonFile").addEventListener("change",async event=>{
+    const file=event.target.files[0];if(!file)return;
+    try{
+      const data=JSON.parse(await file.text());
+      if(!data || !Array.isArray(data.codes))throw new Error("Expected a JSON object with a codes array.");
+      const ids=new Set();
+      for(const r of data.codes){
+        if(!r.id||!r.name||!validWebUrl(r.url)||ids.has(r.id))throw new Error("A record has a missing/invalid ID, name or URL, or a duplicate ID.");
+        ids.add(r.id);r.active=r.active!==false;
+      }
+      records=data.codes;saveDraft();renderList();resetForm();setMessage("Database imported into this browser draft.");
+    }catch(e){setMessage("Import failed: "+e.message,true);}
+    event.target.value="";
+  });
+  $("loadPublished").onclick=async()=>{
+    if(!confirm("Replace the current browser draft with the published GitHub database? Export your draft first if you need it."))return;
+    try{
+      const response=await fetch(DB_PATH+"?t="+Date.now(),{cache:"no-store"});
+      if(!response.ok)throw new Error("HTTP "+response.status);
+      const data=await response.json();
+      if(!Array.isArray(data.codes))throw new Error("The published JSON does not contain a codes array.");
+      records=data.codes;saveDraft();renderList();resetForm();setMessage("Published database loaded. Your previous local draft was replaced.");
+    }catch(e){setMessage("Could not load the published database. Make sure database/qr_codes.json exists and the site is published. "+e.message,true);}
+  };
+  $("baseUrl").value=defaultBase();
+
+  // Public scanner route: ?id=... looks up the current destination in the published JSON.
+  const params=new URLSearchParams(location.search);
+  const scanId=params.get("id");
+  if(scanId){
+    $("app").classList.add("hidden");$("redirectMessage").classList.remove("hidden");
+    (async()=>{
+      try{
+        const response=await fetch(DB_PATH+"?t="+Date.now(),{cache:"no-store"});
+        if(!response.ok)throw new Error("Database unavailable");
+        const data=await response.json();
+        const record=Array.isArray(data.codes)?data.codes.find(r=>r.id===scanId):null;
+        if(!record){$("redirectTitle").textContent="QR code not found";$("redirectText").textContent="This QR code ID does not exist in the published database.";return;}
+        if(record.active===false){$("redirectTitle").textContent="QR code inactive";$("redirectText").textContent="This QR code has been deactivated by its owner.";return;}
+        if(!validWebUrl(record.url))throw new Error("Invalid destination");
+        $("redirectTitle").textContent="Redirecting…";
+        $("redirectText").textContent="Opening "+record.name;
+        location.replace(record.url);
+      }catch(error){
+        $("redirectTitle").textContent="Unable to open this QR code";
+        $("redirectText").textContent="The published database could not be loaded. Please try again later.";
+      }
+    })();
+  } else {
+    // Restore a browser draft, if one exists. The published database can be loaded separately.
+    try{
+      const saved=JSON.parse(localStorage.getItem(STORAGE_KEY)||"null");
+      if(saved&&Array.isArray(saved.codes)){records=saved.codes;renderList();$("draftInfo").textContent="Restored browser draft: "+records.length+" record(s). Not published yet.";}
+    }catch{}
+  }
+})();
+</script>
+</body>
+</html>
