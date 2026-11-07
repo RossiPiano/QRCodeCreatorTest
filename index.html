@@ -25,7 +25,7 @@ THE SOFTWARE.
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>QR Code Creator — Version 1.1</title>
+<title>QR Code Creator — Version 1</title>
 <style>
 :root{color-scheme:light;--ink:#18212f;--muted:#64748b;--line:#dce3ec;--paper:#f5f7fa;--blue:#2457c5;--blue2:#eaf0ff;--red:#a42d35;--green:#176b45}
 *{box-sizing:border-box}
@@ -66,33 +66,13 @@ hr{border:0;border-top:1px solid var(--line);margin:18px 0}
 .hidden{display:none!important}
 #redirectMessage{max-width:650px;margin:10vh auto;background:white;border:1px solid var(--line);border-radius:14px;padding:28px}
 footer{max-width:1080px;margin:0 auto;padding:0 16px 28px;color:var(--muted);font-size:.82rem}
-.header-row{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
-.header-row p{margin:4px 0 0;color:#cbd5e1}
-button.header-switch{background:#fff;color:#17243a}
-.easy-wrap{max-width:650px;margin:24px auto}
-.easy-panel{background:#fff;border:1px solid var(--line);border-radius:13px;padding:22px;box-shadow:0 2px 8px #17243a08}
-.easy-panel h2{margin:0 0 8px}
-.easy-panel label{display:block;font-weight:650;margin:16px 0 5px}
-.easy-panel input,.easy-panel select{width:100%;padding:11px;border:1px solid #bdc8d8;border-radius:8px;font:inherit;color:inherit;background:white}
-.easy-panel select{min-height:116px;max-height:180px;overflow-y:auto}
-.easy-help{color:var(--muted);font-size:.88rem}
-.easy-notice{padding:11px 13px;border:1px solid #cbd8ef;background:#eef4ff;border-radius:9px;margin-top:16px;font-size:.9rem}
-.easy-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
-.easy-message{margin-top:12px;min-height:22px;color:var(--green);font-size:.92rem}
-.easy-message.error{color:var(--red)}
-.easy-qr{display:flex;justify-content:center;align-items:center;min-height:220px;background:#fafbfd;border:1px dashed var(--line);border-radius:10px;margin-top:18px;padding:12px}
-.easy-qr img{width:190px;height:190px;image-rendering:pixelated}
-.easy-footer{max-width:650px;margin:0 auto;padding:0 16px 28px;color:var(--muted);font-size:.82rem}
-@media(max-width:760px){.grid{grid-template-columns:1fr}header{padding:18px 16px}.entry{grid-template-columns:1fr}.entry-buttons{justify-content:flex-start}.easy-panel{padding:17px}}
+@media(max-width:760px){.grid{grid-template-columns:1fr}header{padding:18px 16px}.entry{grid-template-columns:1fr}.entry-buttons{justify-content:flex-start}}
 </style>
 </head>
 <body>
 <header>
   <h1>QR Code Creator</h1>
-  <div class="header-row">
-    <p>Dynamic QR codes · Version 1.1</p>
-    <button type="button" class="header-switch" id="modeSwitch">Expert View</button>
-  </div>
+  <p>Dynamic QR codes · Version 1</p>
 </header>
 
 <div id="redirectMessage" class="hidden">
@@ -101,99 +81,63 @@ button.header-switch{background:#fff;color:#17243a}
 </div>
 
 <main id="app">
-  <section id="easyView" class="easy-wrap">
-    <div class="easy-panel">
-      <h2>Your permanent QR code</h2>
-      <p class="easy-help">Use this same QR code again and again. You can change the destination link whenever you need to; the QR code itself stays the same.</p>
+  <div class="notice">
+    <strong>How this works:</strong> Each QR code contains a link to this GitHub Pages site and a permanent ID.
+    The destination is looked up in <code>database/qr_codes.json</code>, so you can change the destination later without reprinting the QR code.
+  </div>
 
-      <form id="easyForm">
-        <label for="easyDestination">Destination URL</label>
-        <input id="easyDestination" type="url" placeholder="https://forms.gle/…" required>
-        <div class="easy-actions">
-          <button type="submit" id="easySave">Save destination</button>
+  <div class="grid">
+    <section class="panel">
+      <h2 id="formHeading">Create a QR code</h2>
+      <form id="codeForm">
+        <label for="name">Name / label</label>
+        <input id="name" maxlength="100" placeholder="e.g. Piano lesson feedback form" required>
+        <label for="destination">Destination URL</label>
+        <input id="destination" type="url" placeholder="https://forms.gle/…" required>
+        <small>Use the complete shareable URL. Only http:// and https:// links are accepted.</small>
+        <label for="baseUrl">QR link base address</label>
+        <input id="baseUrl" type="url" required>
+        <small>This should be the address of your published GitHub Pages app, ending with a slash. Check it before creating real QR codes.</small>
+        <div class="actions">
+          <button type="submit" id="saveButton">Create QR code</button>
+          <button type="button" class="secondary" id="cancelEdit" hidden>Cancel edit</button>
         </div>
       </form>
-
-      <label for="urlHistory">Previously used links</label>
-      <select id="urlHistory" size="5" aria-label="Previously saved destination URLs">
-        <option disabled>No saved links yet</option>
-      </select>
-      <p class="easy-help">Select a previous link to put it in the destination field. The list is saved in this browser.</p>
-
-      <div id="easyMessage" class="easy-message" role="status"></div>
-      <div id="easyQrPreview" class="easy-qr"><span class="muted">Save a destination URL to create your QR code.</span></div>
-      <div class="easy-actions">
-        <button type="button" class="secondary" id="easyDownloadPng" disabled>Download PNG</button>
-        <button type="button" class="secondary" id="easyDownloadSvg" disabled>Download SVG</button>
+      <div id="message" role="status"></div>
+      <div id="qrPreview"><span class="muted">Your QR code preview will appear here.</span></div>
+      <div class="actions">
+        <button type="button" class="secondary" id="downloadPng" disabled>Download PNG</button>
+        <button type="button" class="secondary" id="downloadSvg" disabled>Download SVG</button>
       </div>
-      <div class="easy-notice">
-        <strong>Publishing:</strong> Changes are saved in this browser first. To make a changed destination live for people scanning the printed QR code, open Expert View, download the database JSON, and upload it to your GitHub repository.
+    </section>
+
+    <section class="panel">
+      <h2>Your QR codes</h2>
+      <div class="toolbar">
+        <input id="search" placeholder="Search names or URLs…" aria-label="Search QR codes">
+        <button type="button" class="secondary" id="showAll">Show all</button>
       </div>
-    </div>
-  </section>
-
-  <div id="expertView" class="hidden">
-    <div class="notice">
-      <strong>How this works:</strong> Each QR code contains a link to this GitHub Pages site and a permanent ID.
-      The destination is looked up in <code>database/qr_codes.json</code>, so you can change the destination later without reprinting the QR code.
-    </div>
-
-    <div class="grid">
-      <section class="panel">
-        <h2 id="formHeading">Create a QR code</h2>
-        <form id="codeForm">
-          <label for="name">Name / label</label>
-          <input id="name" maxlength="100" placeholder="e.g. Piano lesson feedback form" required>
-          <label for="destination">Destination URL</label>
-          <input id="destination" type="url" placeholder="https://forms.gle/…" required>
-          <small>Use the complete shareable URL. Only http:// and https:// links are accepted.</small>
-          <label for="baseUrl">QR link base address</label>
-          <input id="baseUrl" type="url" required>
-          <small>This should be the address of your published GitHub Pages app, ending with a slash. Check it before creating real QR codes.</small>
-          <div class="actions">
-            <button type="submit" id="saveButton">Create QR code</button>
-            <button type="button" class="secondary" id="cancelEdit" hidden>Cancel edit</button>
-          </div>
-        </form>
-        <div id="message" role="status"></div>
-        <div id="qrPreview"><span class="muted">Your QR code preview will appear here.</span></div>
-        <div class="actions">
-          <button type="button" class="secondary" id="downloadPng" disabled>Download PNG</button>
-          <button type="button" class="secondary" id="downloadSvg" disabled>Download SVG</button>
-        </div>
-      </section>
-
-      <section class="panel">
-        <h2>Your QR codes</h2>
-        <div class="toolbar">
-          <input id="search" placeholder="Search names or URLs…" aria-label="Search QR codes">
-          <button type="button" class="secondary" id="showAll">Show all</button>
-        </div>
-        <div id="entries"><p class="muted">No QR codes yet. Create one using the form.</p></div>
-        <hr>
-        <h2>Database publishing</h2>
-        <p class="muted">Your changes are kept as a draft in this browser. To publish them, download the JSON file and upload it to your GitHub repository, replacing the existing file at <code>database/qr_codes.json</code>.</p>
-        <div class="actions">
-          <button type="button" id="exportJson">Download database JSON</button>
-          <button type="button" class="secondary" id="importJson">Import database JSON</button>
-          <input type="file" id="jsonFile" accept=".json,application/json" class="hidden">
-        </div>
-        <p class="muted" id="draftInfo">Draft is stored in this browser only. It is not published until you upload the JSON file to GitHub.</p>
-        <div class="actions">
-          <button type="button" class="secondary" id="loadPublished">Load published database</button>
-        </div>
-        <small>Loading the published database replaces the current browser draft. Export your draft first if you need to keep it.</small>
-      </section>
-    </div>
+      <div id="entries"><p class="muted">No QR codes yet. Create one using the form.</p></div>
+      <hr>
+      <h2>Database publishing</h2>
+      <p class="muted">Your changes are kept as a draft in this browser. To publish them, download the JSON file and upload it to your GitHub repository, replacing the existing file at <code>database/qr_codes.json</code>.</p>
+      <div class="actions">
+        <button type="button" id="exportJson">Download database JSON</button>
+        <button type="button" class="secondary" id="importJson">Import database JSON</button>
+        <input type="file" id="jsonFile" accept=".json,application/json" class="hidden">
+      </div>
+      <p class="muted" id="draftInfo">Draft is stored in this browser only. It is not published until you upload the JSON file to GitHub.</p>
+      <div class="actions">
+        <button type="button" class="secondary" id="loadPublished">Load published database</button>
+      </div>
+      <small>Loading the published database replaces the current browser draft. Export your draft first if you need to keep it.</small>
+    </section>
   </div>
 </main>
-<footer id="expertFooter" class="hidden">
+<footer>
   QR images are generated in your browser. The database contains QR names, IDs and destination URLs; it is public when published.
   Do not store private or confidential links here.
 </footer>
-<div id="easyFooter" class="easy-footer">
-  QR images are generated in your browser. Only use shareable URLs; published destination links are publicly accessible.
-</div>
 
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@2.0.4/dist/qrcode.js"></script>
 <script>
@@ -255,8 +199,7 @@ button.header-switch{background:#fff;color:#17243a}
       const preview = document.createElement("button"); preview.className="secondary"; preview.textContent="Show QR"; preview.onclick=()=>showQr(record.id);
       const edit = document.createElement("button"); edit.className="secondary"; edit.textContent="Edit"; edit.disabled=!record.active; edit.onclick=()=>startEdit(record.id);
       const toggle = document.createElement("button"); toggle.className=record.active?"danger":"secondary"; toggle.textContent=record.active?"Deactivate":"Reactivate"; toggle.onclick=()=>toggleActive(record.id);
-      const remove = document.createElement("button"); remove.className="danger"; remove.textContent="Delete permanently"; remove.onclick=()=>deleteRecord(record.id);
-      buttons.append(preview,edit,toggle,remove);
+      buttons.append(preview,edit,toggle);
       item.append(info,buttons); host.append(item);
     });
   }
@@ -301,19 +244,6 @@ button.header-switch{background:#fff;color:#17243a}
       $("downloadPng").disabled=true; $("downloadSvg").disabled=true;
     }
     setMessage(r.active ? "QR code reactivated in the local draft." : "QR code deactivated in the local draft. Publish the JSON change to make it inactive for scanners.");
-  }
-  function deleteRecord(id) {
-    const record = records.find(r => r.id === id);
-    if (!record) return;
-    if (!confirm("Permanently delete “" + (record.name || "this QR code") + "”? This removes the record from the browser draft. Scanners will no longer find it after you publish the updated database. This cannot be undone.")) return;
-    records = records.filter(r => r.id !== id);
-    if (currentQrId === id) {
-      currentQr = null; currentQrId = null;
-      $("qrPreview").innerHTML = '<span class="muted">This QR code was deleted.</span>';
-      $("downloadPng").disabled = true; $("downloadSvg").disabled = true;
-    }
-    saveDraft(); renderList();
-    setMessage("QR code permanently deleted from the browser draft. Publish the JSON change to remove it for scanners.");
   }
   $("codeForm").addEventListener("submit", event=>{
     event.preventDefault();
@@ -390,157 +320,6 @@ button.header-switch{background:#fff;color:#17243a}
       records=data.codes;saveDraft();renderList();resetForm();setMessage("Published database loaded. Your previous local draft was replaced.");
     }catch(e){setMessage("Could not load the published database. Make sure database/qr_codes.json exists and the site is published. "+e.message,true);}
   };
-
-  // Easy View: one stable QR record, with a browser-local URL history.
-  const EASY_HISTORY_KEY = "qrCodeCreatorV11UrlHistory";
-  function easyRecord() {
-    return records.find(r => r.easyMode === true) || null;
-  }
-  function easyMessage(text, error=false) {
-    $("easyMessage").textContent = text;
-    $("easyMessage").classList.toggle("error", error);
-  }
-  function saveUrlHistory(url) {
-    let history = [];
-    try {
-      const saved = JSON.parse(localStorage.getItem(EASY_HISTORY_KEY) || "[]");
-      if (Array.isArray(saved)) history = saved.filter(validWebUrl);
-    } catch {}
-    history = [url, ...history.filter(item => item !== url)].slice(0, 100);
-    localStorage.setItem(EASY_HISTORY_KEY, JSON.stringify(history));
-    renderUrlHistory();
-  }
-  function renderUrlHistory() {
-    let history = [];
-    try {
-      const saved = JSON.parse(localStorage.getItem(EASY_HISTORY_KEY) || "[]");
-      if (Array.isArray(saved)) history = saved.filter(validWebUrl);
-    } catch {}
-    const select = $("urlHistory");
-    select.replaceChildren();
-    if (!history.length) {
-      const option = document.createElement("option");
-      option.textContent = "No saved links yet";
-      option.disabled = true;
-      select.append(option);
-      return;
-    }
-    history.forEach(url => {
-      const option = document.createElement("option");
-      option.value = url;
-      option.textContent = url;
-      select.append(option);
-    });
-  }
-  function setEasyQrPreview(record) {
-    if (!record || !record.url || !record.active) {
-      $("easyQrPreview").innerHTML = '<span class="muted">Save a destination URL to create your QR code.</span>';
-      $("easyDownloadPng").disabled = true;
-      $("easyDownloadSvg").disabled = true;
-      return;
-    }
-    const base = cleanBase(defaultBase());
-    const qrUrl = base + "?id=" + encodeURIComponent(record.id);
-    try {
-      const qr = qrcode(0, "M");
-      qr.addData(qrUrl);
-      qr.make();
-      currentQr = qr;
-      currentQrId = record.id;
-      const img = document.createElement("img");
-      img.alt = "Permanent Easy View QR code";
-      img.src = qr.createDataURL(8, 32);
-      $("easyQrPreview").replaceChildren(img);
-      $("easyDownloadPng").disabled = false;
-      $("easyDownloadSvg").disabled = false;
-    } catch (error) {
-      easyMessage("Could not generate the QR code. Check the app address and try again.", true);
-    }
-  }
-  function refreshEasyView() {
-    const record = easyRecord();
-    if (record) {
-      $("easyDestination").value = record.url || "";
-      if (record.active && record.url) setEasyQrPreview(record);
-      else setEasyQrPreview(null);
-    } else {
-      $("easyDestination").value = "";
-      setEasyQrPreview(null);
-    }
-    renderUrlHistory();
-  }
-  function switchView(expert) {
-    $("easyView").classList.toggle("hidden", expert);
-    $("easyFooter").classList.toggle("hidden", expert);
-    $("expertView").classList.toggle("hidden", !expert);
-    $("expertFooter").classList.toggle("hidden", !expert);
-    $("modeSwitch").textContent = expert ? "Easy View" : "Expert View";
-    if (!expert) refreshEasyView();
-    else renderList();
-  }
-  $("modeSwitch").addEventListener("click", () => {
-    switchView(!$("expertView").classList.contains("hidden"));
-  });
-  $("urlHistory").addEventListener("change", () => {
-    if ($("urlHistory").value) $("easyDestination").value = $("urlHistory").value;
-  });
-  $("easyForm").addEventListener("submit", event => {
-    event.preventDefault();
-    const url = $("easyDestination").value.trim();
-    if (!validWebUrl(url)) {
-      easyMessage("Enter a valid http:// or https:// destination URL.", true);
-      return;
-    }
-    let record = easyRecord();
-    if (!record) {
-      let id;
-      do { id = makeId(); } while (records.some(r => r.id === id));
-      record = {
-        id,
-        name: "Easy View QR code",
-        url,
-        active: true,
-        easyMode: true,
-        createdAt: timestamp(),
-        updatedAt: timestamp()
-      };
-      records.unshift(record);
-    } else {
-      record.url = url;
-      record.active = true;
-      record.updatedAt = timestamp();
-      record.easyMode = true;
-    }
-    saveUrlHistory(url);
-    saveDraft();
-    renderList();
-    setEasyQrPreview(record);
-    easyMessage("Destination saved. The QR code ID has not changed. Publish the updated database in Expert View to make this change live for scanners.");
-  });
-  function downloadEasyPng() {
-    if (!currentQr || !easyRecord() || currentQrId !== easyRecord().id) return;
-    const scale=12, margin=48, count=currentQr.getModuleCount();
-    const canvas=document.createElement("canvas");
-    canvas.width=canvas.height=count*scale+margin*2;
-    const ctx=canvas.getContext("2d");
-    ctx.fillStyle="#fff";ctx.fillRect(0,0,canvas.width,canvas.height);
-    currentQr.renderTo2dContext({
-      fillStyle:"#000",
-      fillRect:(x,y,w,h)=>{ctx.fillStyle="#000";ctx.fillRect(x*scale+margin,y*scale+margin,w*scale,h*scale);}
-    },scale);
-    const a=document.createElement("a");a.href=canvas.toDataURL("image/png");a.download="permanent-qr-code.png";a.click();
-  }
-  function downloadEasySvg() {
-    if (!currentQr || !easyRecord() || currentQrId !== easyRecord().id) return;
-    const svg=currentQr.createSvgTag({cellSize:12,margin:48,scalable:true});
-    const blob=new Blob([svg],{type:"image/svg+xml;charset=utf-8"});
-    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="permanent-qr-code.svg";a.click();
-    setTimeout(()=>URL.revokeObjectURL(a.href),1000);
-  }
-  $("easyDownloadPng").addEventListener("click", downloadEasyPng);
-  $("easyDownloadSvg").addEventListener("click", downloadEasySvg);
-
-
   $("baseUrl").value=defaultBase();
 
   // Public scanner route: ?id=... looks up the current destination in the published JSON.
@@ -571,8 +350,6 @@ button.header-switch{background:#fff;color:#17243a}
       const saved=JSON.parse(localStorage.getItem(STORAGE_KEY)||"null");
       if(saved&&Array.isArray(saved.codes)){records=saved.codes;renderList();$("draftInfo").textContent="Restored browser draft: "+records.length+" record(s). Not published yet.";}
     }catch{}
-    refreshEasyView();
-    switchView(false);
   }
 })();
 </script>
