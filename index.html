@@ -204,6 +204,10 @@ button.header-switch{background:#fff;color:#17243a}
 <script>
 (() => {
   "use strict";
+
+  // USER SETTING: Change this number to adjust the redirect delay (seconds).
+  const REDIRECT_DELAY_SECONDS = 3;
+
   const DB_PATH = "database/qr_codes.json";
   const STORAGE_KEY = "qrCodeCreatorV1Draft";
   const $ = id => document.getElementById(id);
@@ -568,7 +572,7 @@ button.header-switch{background:#fff;color:#17243a}
         if(!validWebUrl(record.url))throw new Error("Invalid destination");
         $("redirectTitle").classList.add("hidden");
         $("redirectText").textContent="Redirecting to the website, please wait...";
-        setTimeout(() => location.replace(record.url), 1500);
+        setTimeout(() => location.replace(record.url), REDIRECT_DELAY_SECONDS * 1000);
       }catch(error){
         $("redirectTitle").classList.remove("hidden");
         $("redirectTitle").textContent="Unable to open this QR code";
