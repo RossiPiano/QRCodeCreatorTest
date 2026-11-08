@@ -64,7 +64,11 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .status.off{background:#f1e9e9;color:#8b353b}
 hr{border:0;border-top:1px solid var(--line);margin:18px 0}
 .hidden{display:none!important}
-#redirectMessage{max-width:650px;margin:10vh auto;background:white;border:1px solid var(--line);border-radius:14px;padding:28px}
+#redirectMessage{min-height:100vh;margin:0;padding:24px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:white;border:0;border-radius:0}
+#redirectMessage.hidden{display:none!important}
+#redirectLogo{display:block;width:min(65vw,280px);max-height:40vh;object-fit:contain;margin:0 auto 22px}
+#redirectMessage p{margin:0;font-size:1rem;color:var(--muted)}
+@media(max-width:600px){#redirectMessage{padding:20px}#redirectLogo{width:min(70vw,240px);max-height:35vh}}
 footer{max-width:1080px;margin:0 auto;padding:0 16px 28px;color:var(--muted);font-size:.82rem}
 .header-row{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
 .header-row p{margin:4px 0 0;color:#cbd5e1}
@@ -96,8 +100,9 @@ button.header-switch{background:#fff;color:#17243a}
 </header>
 
 <div id="redirectMessage" class="hidden">
-  <h2 id="redirectTitle">Opening link…</h2>
-  <p id="redirectText">Please wait.</p>
+  <img id="redirectLogo" src="images/logo.svg" alt="Logo">
+  <h2 id="redirectTitle" class="hidden">Opening link…</h2>
+  <p id="redirectText">Redirecting to the website, please wait...</p>
 </div>
 
 <main id="app">
@@ -547,20 +552,25 @@ button.header-switch{background:#fff;color:#17243a}
   const params=new URLSearchParams(location.search);
   const scanId=params.get("id");
   if(scanId){
-    $("app").classList.add("hidden");$("redirectMessage").classList.remove("hidden");
+    document.querySelector("header").classList.add("hidden");
+    $("app").classList.add("hidden");
+    $("easyFooter").classList.add("hidden");
+    $("expertFooter").classList.add("hidden");
+    $("redirectMessage").classList.remove("hidden");
     (async()=>{
       try{
         const response=await fetch(DB_PATH+"?t="+Date.now(),{cache:"no-store"});
         if(!response.ok)throw new Error("Database unavailable");
         const data=await response.json();
         const record=Array.isArray(data.codes)?data.codes.find(r=>r.id===scanId):null;
-        if(!record){$("redirectTitle").textContent="QR code not found";$("redirectText").textContent="This QR code ID does not exist in the published database.";return;}
-        if(record.active===false){$("redirectTitle").textContent="QR code inactive";$("redirectText").textContent="This QR code has been deactivated by its owner.";return;}
+        if(!record){$("redirectTitle").classList.remove("hidden");$("redirectTitle").textContent="QR code not found";$("redirectText").textContent="This QR code ID does not exist in the published database.";return;}
+        if(record.active===false){$("redirectTitle").classList.remove("hidden");$("redirectTitle").textContent="QR code inactive";$("redirectText").textContent="This QR code has been deactivated by its owner.";return;}
         if(!validWebUrl(record.url))throw new Error("Invalid destination");
-        $("redirectTitle").textContent="Redirecting…";
-        $("redirectText").textContent="Opening "+record.name;
+        $("redirectTitle").classList.add("hidden");
+        $("redirectText").textContent="Redirecting to the website, please wait...";
         location.replace(record.url);
       }catch(error){
+        $("redirectTitle").classList.remove("hidden");
         $("redirectTitle").textContent="Unable to open this QR code";
         $("redirectText").textContent="The published database could not be loaded. Please try again later.";
       }
