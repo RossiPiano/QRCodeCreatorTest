@@ -64,8 +64,8 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .status.off{background:#f1e9e9;color:#8b353b}
 hr{border:0;border-top:1px solid var(--line);margin:18px 0}
 .hidden{display:none!important}
+header,#app,#expertFooter,#easyFooter{display:none!important}
 #redirectMessage{min-height:100vh;margin:0;padding:24px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:white;border:0;border-radius:0}
-#redirectMessage.hidden{display:none!important}
 #redirectLogo{display:block;width:min(65vw,280px);max-height:40vh;object-fit:contain;margin:0 auto 22px}
 #redirectMessage p{margin:0;font-size:1rem;color:var(--muted)}
 @media(max-width:600px){#redirectMessage{padding:20px}#redirectLogo{width:min(70vw,240px);max-height:35vh}}
@@ -99,7 +99,7 @@ button.header-switch{background:#fff;color:#17243a}
   </div>
 </header>
 
-<div id="redirectMessage" class="hidden">
+<div id="redirectMessage">
   <img id="redirectLogo" src="images/logo.svg" alt="Logo">
   <h2 id="redirectTitle" class="hidden">Opening link…</h2>
   <p id="redirectText">Redirecting to the website, please wait...</p>
@@ -200,7 +200,6 @@ button.header-switch{background:#fff;color:#17243a}
   QR images are generated in your browser. Only use shareable URLs; published destination links are publicly accessible.
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@2.0.4/dist/qrcode.js"></script>
 <script>
 (() => {
   "use strict";
@@ -555,7 +554,9 @@ button.header-switch{background:#fff;color:#17243a}
   // Public scanner route: ?id=... looks up the current destination in the published JSON.
   const params=new URLSearchParams(location.search);
   const scanId=params.get("id");
-  if(scanId){
+  if(!scanId){
+    $("redirectText").textContent="Please scan a QR code.";
+  } else {
     document.querySelector("header").classList.add("hidden");
     $("app").classList.add("hidden");
     $("easyFooter").classList.add("hidden");
@@ -579,14 +580,6 @@ button.header-switch{background:#fff;color:#17243a}
         $("redirectText").textContent="The published database could not be loaded. Please try again later.";
       }
     })();
-  } else {
-    // Restore a browser draft, if one exists. The published database can be loaded separately.
-    try{
-      const saved=JSON.parse(localStorage.getItem(STORAGE_KEY)||"null");
-      if(saved&&Array.isArray(saved.codes)){records=saved.codes;renderList();$("draftInfo").textContent="Restored browser draft: "+records.length+" record(s). Not published yet.";}
-    }catch{}
-    refreshEasyView();
-    switchView(false);
   }
 })();
 </script>
