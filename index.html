@@ -568,7 +568,7 @@ button.header-switch{background:#fff;color:#17243a}
         if(!validWebUrl(record.url))throw new Error("Invalid destination");
         $("redirectTitle").classList.add("hidden");
         $("redirectText").textContent="Redirecting to the website, please wait...";
-        location.replace(record.url);
+        setTimeout(() => location.replace(record.url), 1500);
       }catch(error){
         $("redirectTitle").classList.remove("hidden");
         $("redirectTitle").textContent="Unable to open this QR code";
